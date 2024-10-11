@@ -4,17 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
-import software.amazon.awssdk.services.s3.model.HeadBucketResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-import software.amazon.awssdk.services.s3.waiters.S3Waiter;
-
-import java.util.Optional;
 
 public class CreateBucket {
 
@@ -42,10 +36,13 @@ public class CreateBucket {
             switch (e.statusCode()) {
                 case 404:
                     LOGGER.info("No " + TEST_BUCKET_NAME + " bucket existing");
+                    break;
                 case 400:
                     LOGGER.warn("Attempted to access a bucket from a Region other than where it exists");
+                    break;
                 case 403:
                     LOGGER.warn("Permission errors in accessing bucket");
+                    break;
             }
         }
         return exist;
@@ -59,7 +56,8 @@ public class CreateBucket {
             var headBucketRequest = HeadBucketRequest.builder().bucket(TEST_BUCKET_NAME).build();
             var waiter = s3.waiter();
             var bucketExistsWaiterResponse = waiter.waitUntilBucketExists(headBucketRequest);
-            bucketExistsWaiterResponse.matched().response().ifPresent(System.out::println);
+            bucketExistsWaiterResponse.matched().response()
+                .ifPresent(response -> LOGGER.info("Bucket " + TEST_BUCKET_NAME + " has been created: " + response));
         } catch (S3Exception e) {
             LOGGER.error(e.awsErrorDetails().errorMessage());
         }
